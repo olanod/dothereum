@@ -1,7 +1,8 @@
 use primitives::{Pair, Public, sr25519};
 use dothereum_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, IndicesConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, IndicesConfig, SystemConfig, WASM_BINARY, Signature,
+	EVMConfig,
 };
 use aura_primitives::sr25519::{AuthorityId as AuraId};
 use grandpa_primitives::{AuthorityId as GrandpaId};
@@ -159,5 +160,6 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 		grandpa: Some(GrandpaConfig {
 			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
 		}),
+		evm: Some(EVMConfig::default()),
 	}
 }
