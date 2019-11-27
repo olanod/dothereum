@@ -51,5 +51,5 @@ transaction-pool = { package = "sc-transaction-pool", git = 'https://github.com/
 trie-root = "0.15.2"
 
 [build-dependencies]
-vergen = "3.0.4"
 build-script-utils = { package = "substrate-build-script-utils", git = 'https://github.com/paritytech/substrate.git' }
+vergen = "3.0.4"

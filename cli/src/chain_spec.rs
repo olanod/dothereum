@@ -18,9 +18,9 @@
 //! Dothereum chain configurations.
 
 use chain_spec::ChainSpecExtension;
-use primitives::{Pair, Public, crypto::UncheckedInto, sr25519};
+use primitives::{Pair, Public, sr25519};
 use serde::{Serialize, Deserialize};
-use node_runtime::{
+use dothereum_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, ContractsConfig, CouncilConfig, DemocracyConfig,
 	GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SudoConfig,
 	SystemConfig, TechnicalCommitteeConfig, WASM_BINARY,

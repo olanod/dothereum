@@ -10,12 +10,12 @@ balances = { package = "pallet-balances", git = 'https://github.com/paritytech/s
 client = { package = "substrate-client", git = 'https://github.com/paritytech/substrate.git' }
 codec = { package = "parity-scale-codec", version = "1.1.0" }
 contracts = { package = "pallet-contracts", git = 'https://github.com/paritytech/substrate.git' }
-grandpa = { package = "pallet-grandpa", git = 'https://github.com/paritytech/substrate.git' }
-indices = { package = "pallet-indices", git = 'https://github.com/paritytech/substrate.git' }
-keyring = { package = "substrate-keyring", git = 'https://github.com/paritytech/substrate.git' }
 dothereum-executor = { path = "../executor" }
 dothereum-primitives = { path = "../primitives" }
 dothereum-runtime = { path = "../runtime" }
+grandpa = { package = "pallet-grandpa", git = 'https://github.com/paritytech/substrate.git' }
+indices = { package = "pallet-indices", git = 'https://github.com/paritytech/substrate.git' }
+keyring = { package = "substrate-keyring", git = 'https://github.com/paritytech/substrate.git' }
 primitives = { package = "substrate-primitives", git = 'https://github.com/paritytech/substrate.git' }
 runtime-io = { package = "sr-io", git = 'https://github.com/paritytech/substrate.git' }
 runtime_support = { package = "frame-support", git = 'https://github.com/paritytech/substrate.git' }
