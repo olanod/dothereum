@@ -98,7 +98,7 @@ macro_rules! new_full_start {
 				Ok(import_queue)
 			})?
 			.with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
-			dothereum_rpc::create(client, pool)
+				dothereum_rpc::create(client, pool)
 			})?;
 
 		(builder, import_setup, inherent_data_providers)
