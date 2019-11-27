@@ -17,14 +17,14 @@ codec = { package = "parity-scale-codec", version = "1.1.0" }
 ctrlc = { version = "3.1.3", features = ["termination"] }
 derive_more = "0.15.0"
 dothereum-runtime = { path = "runtime" }
-exit-future = "0.1.4"
-futures = "0.1.29"
+futures = "0.3.1"
+futures01 = { package = "futures", version = "0.1.29" }
 grandpa = { package = "substrate-finality-grandpa", git = 'https://github.com/paritytech/substrate.git' }
 grandpa-primitives = { package = "substrate-finality-grandpa-primitives", git = 'https://github.com/paritytech/substrate.git' }
 inherents = { package = "substrate-inherents", git = 'https://github.com/paritytech/substrate.git' }
 log = "0.4.8"
 network = { package = "substrate-network", git = 'https://github.com/paritytech/substrate.git' }
-parking_lot = "0.9.0"
+parking_lot = "0.10.0"
 primitives = { package = "substrate-primitives", git = 'https://github.com/paritytech/substrate.git' }
 rust-embed = "5.1.0"
 sr-io = { git = 'https://github.com/paritytech/substrate.git' }
@@ -34,7 +34,7 @@ substrate-client = { git = 'https://github.com/paritytech/substrate.git' }
 substrate-executor = { git = 'https://github.com/paritytech/substrate.git' }
 substrate-service = { git = 'https://github.com/paritytech/substrate.git' }
 tokio = "0.1.22"
-transaction-pool = { package = "substrate-transaction-pool", git = 'https://github.com/paritytech/substrate.git' }
+transaction-pool = { package = "sc-transaction-pool", git = 'https://github.com/paritytech/substrate.git' }
 trie-root = "0.15.2"
 
 [build-dependencies]
