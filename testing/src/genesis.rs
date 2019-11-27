@@ -68,16 +68,34 @@ pub fn config(support_changes_trie: bool, code: Option<&[u8]>) -> GenesisConfig 
 				)),
 			]
 		}),
+		staking: Some(StakingConfig {
+			current_era: 0,
+			stakers: vec![
+				(dave(), alice(), 111 * DOLLARS, staking::StakerStatus::Validator),
+				(eve(), bob(), 100 * DOLLARS, staking::StakerStatus::Validator),
+				(ferdie(), charlie(), 100 * DOLLARS, staking::StakerStatus::Validator)
+			],
+			validator_count: 3,
+			minimum_validator_count: 0,
+			slash_reward_fraction: Perbill::from_percent(10),
+			invulnerables: vec![alice(), bob(), charlie()],
+			.. Default::default()
+		}),
 		contracts: Some(ContractsConfig {
 			current_schedule: Default::default(),
 			gas_price: 1 * MILLICENTS,
 		}),
-		aura: Some(AuraConfig {
-			authorities: vec![],
-		}),
+		babe: Some(Default::default()),
 		grandpa: Some(GrandpaConfig {
 			authorities: vec![],
 		}),
+		im_online: Some(Default::default()),
+		authority_discovery: Some(Default::default()),
+		democracy: Some(Default::default()),
+		collective_Instance1: Some(Default::default()),
+		collective_Instance2: Some(Default::default()),
+		membership_Instance1: Some(Default::default()),
 		sudo: Some(Default::default()),
+		treasury: Some(Default::default()),
 	}
 }
