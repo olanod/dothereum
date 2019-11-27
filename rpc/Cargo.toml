@@ -10,7 +10,7 @@ jsonrpc-core = "14.0.3"
 dothereum-primitives = { path = "../primitives" }
 dothereum-runtime = { path = "../runtime" }
 sr-primitives = { git = 'https://github.com/paritytech/substrate.git' }
-paint-contracts-rpc = { git = 'https://github.com/paritytech/substrate.git' }
-paint-transaction-payment-rpc = { git = 'https://github.com/paritytech/substrate.git' }
-paint-system-rpc = { git = 'https://github.com/paritytech/substrate.git' }
-transaction_pool = { package = "substrate-transaction-pool", git = 'https://github.com/paritytech/substrate.git' }
+pallet-contracts-rpc = { git = 'https://github.com/paritytech/substrate.git' }
+pallet-transaction-payment-rpc = { git = 'https://github.com/paritytech/substrate.git' }
+substrate-frame-rpc-system = { git = 'https://github.com/paritytech/substrate.git' }
+transaction_pool = { package = "sc-transaction-pool", git = 'https://github.com/paritytech/substrate.git' }
