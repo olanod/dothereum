@@ -192,7 +192,7 @@ parameter_types! {
 }
 impl timestamp::Trait for Runtime {
 	type Moment = Moment;
-	type OnTimestampSet = Aura;
+	type OnTimestampSet = Babe;
 	type MinimumPeriod = MinimumPeriod;
 }
 
