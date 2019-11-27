@@ -21,27 +21,27 @@
 
 use std::sync::Arc;
 
-use aura;
+use babe;
 use client::{self, LongestChain};
+use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use dothereum_executor;
 use dothereum_primitives::Block;
 use dothereum_runtime::{GenesisConfig, RuntimeApi};
-use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
+use substrate_service::{
+	AbstractService, ServiceBuilder, config::Configuration, error::{Error as ServiceError},
+};
+use transaction_pool::{self, txpool::{Pool as TransactionPool}};
 use inherents::InherentDataProviders;
 use network::construct_simple_protocol;
-use substrate_service::{
-	config::Configuration, error::Error as ServiceError, AbstractService, ServiceBuilder,
-};
-use transaction_pool::{self, txpool::Pool as TransactionPool};
 
+use substrate_service::{Service, NetworkStatus};
 use client::{Client, LocalCallExecutor};
 use client_db::Backend;
+use sr_primitives::traits::Block as BlockT;
 use dothereum_executor::NativeExecutor;
 use network::NetworkService;
 use offchain::OffchainWorkers;
 use primitives::Blake2Hasher;
-use sr_primitives::traits::Block as BlockT;
-use substrate_service::{NetworkStatus, Service};
 
 construct_simple_protocol! {
 	/// Demo protocol attachment for substrate.
@@ -59,45 +59,50 @@ macro_rules! new_full_start {
 		let inherent_data_providers = inherents::InherentDataProviders::new();
 
 		let builder = substrate_service::ServiceBuilder::new_full::<
-			dothereum_primitives::Block,
-			dothereum_runtime::RuntimeApi,
-			dothereum_executor::Executor,
+			dothereum_primitives::Block, dothereum_runtime::RuntimeApi, dothereum_executor::Executor
 		>($config)?
-		.with_select_chain(|_config, backend| Ok(client::LongestChain::new(backend.clone())))?
-		.with_transaction_pool(|config, client| {
-			Ok(transaction_pool::txpool::Pool::new(
-				config,
-				transaction_pool::FullChainApi::new(client),
-			))
-		})?
-		.with_import_queue(|_config, client, mut select_chain, _transaction_pool| {
-			let select_chain = select_chain
-				.take()
-				.ok_or_else(|| substrate_service::Error::SelectChainRequired)?;
-			let (grandpa_block_import, grandpa_link) =
-				grandpa::block_import(client.clone(), &*client, select_chain)?;
-			let justification_import = grandpa_block_import.clone();
+			.with_select_chain(|_config, backend| {
+				Ok(client::LongestChain::new(backend.clone()))
+			})?
+			.with_transaction_pool(|config, client|
+				Ok(transaction_pool::txpool::Pool::new(config, transaction_pool::FullChainApi::new(client)))
+			)?
+			.with_import_queue(|_config, client, mut select_chain, _transaction_pool| {
+				let select_chain = select_chain.take()
+					.ok_or_else(|| substrate_service::Error::SelectChainRequired)?;
+				let (grandpa_block_import, grandpa_link) = grandpa::block_import(
+					client.clone(),
+					&*client,
+					select_chain,
+				)?;
+				let justification_import = grandpa_block_import.clone();
 
-			let import_queue = aura::import_queue::<_, _, AuraPair, _>(
-				aura::SlotDuration::get_or_compute(&*client)?,
-				Box::new(grandpa_block_import.clone()),
-				Some(Box::new(grandpa_block_import.clone())),
-				None,
-				client.clone(),
-				client,
-				inherent_data_providers.clone(),
-				Some(transaction_pool),
-			)?;
+				let (block_import, babe_link) = babe::block_import(
+					babe::Config::get_or_compute(&*client)?,
+					grandpa_block_import,
+					client.clone(),
+					client.clone(),
+				)?;
 
-			import_setup = Some((grandpa_block_import, grandpa_link));
-			Ok(import_queue)
-		})?
-		.with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
+				let import_queue = babe::import_queue(
+					babe_link.clone(),
+					block_import.clone(),
+					Some(Box::new(justification_import)),
+					None,
+					client.clone(),
+					client,
+					inherent_data_providers.clone(),
+				)?;
+
+				import_setup = Some((block_import, grandpa_link, babe_link));
+				Ok(import_queue)
+			})?
+			.with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
 			dothereum_rpc::create(client, pool)
-		})?;
+			})?;
 
 		(builder, import_setup, inherent_data_providers)
-		}};
+	}}
 }
 
 /// Creates a full service from the configuration.
@@ -106,9 +111,9 @@ macro_rules! new_full_start {
 /// concrete types instead.
 macro_rules! new_full {
 	($config:expr, $with_startup_data: expr) => {{
-		use futures::sync::mpsc;
+		use futures01::sync::mpsc;
 		use network::DhtEvent;
-		use futures03::{
+		use futures::{
 			compat::Stream01CompatExt,
 			stream::StreamExt,
 			future::{FutureExt, TryFutureExt},
@@ -147,10 +152,10 @@ macro_rules! new_full {
 			.with_dht_event_tx(dht_event_tx)?
 			.build()?;
 
-		let (block_import, grandpa_link) = import_setup.take()
+		let (block_import, grandpa_link, babe_link) = import_setup.take()
 				.expect("Link Half and Block Import are present for Full Services or setup failed before. qed");
 
-		// ($with_startup_data)(&block_import, &babe_link);
+		($with_startup_data)(&block_import, &babe_link);
 
 		if participates_in_consensus {
 			let proposer = substrate_basic_authorship::ProposerFactory {
@@ -253,12 +258,14 @@ macro_rules! new_full {
 #[allow(dead_code)]
 type ConcreteBlock = dothereum_primitives::Block;
 #[allow(dead_code)]
-type ConcreteClient = Client<
-	Backend<ConcreteBlock>,
-	LocalCallExecutor<Backend<ConcreteBlock>, NativeExecutor<dothereum_executor::Executor>>,
-	ConcreteBlock,
-	dothereum_runtime::RuntimeApi,
->;
+type ConcreteClient =
+	Client<
+		Backend<ConcreteBlock>,
+		LocalCallExecutor<Backend<ConcreteBlock>,
+		NativeExecutor<dothereum_executor::Executor>>,
+		ConcreteBlock,
+		dothereum_runtime::RuntimeApi
+	>;
 #[allow(dead_code)]
 type ConcreteBackend = Backend<ConcreteBlock>;
 
@@ -266,121 +273,110 @@ type ConcreteBackend = Backend<ConcreteBlock>;
 pub type NodeConfiguration<C> = Configuration<C, GenesisConfig, crate::chain_spec::Extensions>;
 
 /// Builds a new service for a full client.
-pub fn new_full<C: Send + Default + 'static>(
-	config: NodeConfiguration<C>,
-) -> Result<
+pub fn new_full<C: Send + Default + 'static>(config: NodeConfiguration<C>)
+-> Result<
 	Service<
 		ConcreteBlock,
 		ConcreteClient,
 		LongestChain<ConcreteBackend, ConcreteBlock>,
 		NetworkStatus<ConcreteBlock>,
-		NetworkService<
-			ConcreteBlock,
-			crate::service::NodeProtocol,
-			<ConcreteBlock as BlockT>::Hash,
-		>,
+		NetworkService<ConcreteBlock, crate::service::NodeProtocol, <ConcreteBlock as BlockT>::Hash>,
 		TransactionPool<transaction_pool::FullChainApi<ConcreteClient, ConcreteBlock>>,
 		OffchainWorkers<
 			ConcreteClient,
 			<ConcreteBackend as client_api::backend::Backend<Block, Blake2Hasher>>::OffchainStorage,
 			ConcreteBlock,
-		>,
+		>
 	>,
 	ServiceError,
-> {
+>
+{
 	new_full!(config).map(|(service, _)| service)
 }
 
 /// Builds a new service for a light client.
-pub fn new_light<C: Send + Default + 'static>(
-	config: NodeConfiguration<C>,
-) -> Result<impl AbstractService, ServiceError> {
+pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
+-> Result<impl AbstractService, ServiceError> {
 	type RpcExtension = jsonrpc_core::IoHandler<substrate_rpc::Metadata>;
 	let inherent_data_providers = InherentDataProviders::new();
 
-	let service =
-		ServiceBuilder::new_light::<Block, RuntimeApi, dothereum_executor::Executor>(config)?
-			.with_select_chain(|_config, backend| Ok(LongestChain::new(backend.clone())))?
-			.with_transaction_pool(|config, client| {
-				Ok(TransactionPool::new(
-					config,
-					transaction_pool::FullChainApi::new(client),
-				))
-			})?
-			.with_import_queue_and_fprb(
-				|_config, client, backend, fetcher, _select_chain, _tx_pool| {
-					let fetch_checker = fetcher
-						.map(|fetcher| fetcher.checker().clone())
-						.ok_or_else(|| {
-							"Trying to start light import queue without active fetch checker"
-						})?;
-					let grandpa_block_import = grandpa::light_block_import::<_, _, _, RuntimeApi>(
-						client.clone(),
-						backend,
-						&*client,
-						Arc::new(fetch_checker),
-					)?;
+	let service = ServiceBuilder::new_light::<Block, RuntimeApi, node_executor::Executor>(config)?
+		.with_select_chain(|_config, backend| {
+			Ok(LongestChain::new(backend.clone()))
+		})?
+		.with_transaction_pool(|config, client|
+			Ok(TransactionPool::new(config, transaction_pool::FullChainApi::new(client)))
+		)?
+		.with_import_queue_and_fprb(|_config, client, backend, fetcher, _select_chain, _tx_pool| {
+			let fetch_checker = fetcher
+				.map(|fetcher| fetcher.checker().clone())
+				.ok_or_else(|| "Trying to start light import queue without active fetch checker")?;
+			let grandpa_block_import = grandpa::light_block_import::<_, _, _, RuntimeApi>(
+				client.clone(),
+				backend,
+				&*client,
+				Arc::new(fetch_checker),
+			)?;
 
-					let finality_proof_import = grandpa_block_import.clone();
-					let finality_proof_request_builder =
-						finality_proof_import.create_finality_proof_request_builder();
+			let finality_proof_import = grandpa_block_import.clone();
+			let finality_proof_request_builder =
+				finality_proof_import.create_finality_proof_request_builder();
 
-					let (babe_block_import, babe_link) = babe::block_import(
-						babe::Config::get_or_compute(&*client)?,
-						grandpa_block_import,
-						client.clone(),
-						client.clone(),
-					)?;
+			let (babe_block_import, babe_link) = babe::block_import(
+				babe::Config::get_or_compute(&*client)?,
+				grandpa_block_import,
+				client.clone(),
+				client.clone(),
+			)?;
 
-					let import_queue = babe::import_queue(
-						babe_link,
-						babe_block_import,
-						None,
-						Some(Box::new(finality_proof_import)),
-						client.clone(),
-						client,
-						inherent_data_providers.clone(),
-					)?;
+			let import_queue = babe::import_queue(
+				babe_link,
+				babe_block_import,
+				None,
+				Some(Box::new(finality_proof_import)),
+				client.clone(),
+				client,
+				inherent_data_providers.clone(),
+			)?;
 
-					Ok((import_queue, finality_proof_request_builder))
-				},
-			)?
-			.with_network_protocol(|_| Ok(NodeProtocol::new()))?
-			.with_finality_proof_provider(|client, backend| {
-				Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
-			})?
-			.with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
-				dothereum_rpc::create(client, pool)
-			})?
-			.build()?;
+			Ok((import_queue, finality_proof_request_builder))
+		})?
+		.with_network_protocol(|_| Ok(NodeProtocol::new()))?
+		.with_finality_proof_provider(|client, backend|
+			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
+		)?
+		.with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
+			dothereum_rpc::create(client, pool)
+		})?
+		.build()?;
 
 	Ok(service)
 }
 
 #[cfg(test)]
 mod tests {
-	use crate::service::new_full;
+	use std::sync::Arc;
 	use babe::CompatibleDigestItem;
-	use codec::{Decode, Encode};
 	use consensus_common::{
-		BlockImport, BlockImportParams, BlockOrigin, Environment, ForkChoiceStrategy, Proposer,
+		Environment, Proposer, BlockImportParams, BlockOrigin, ForkChoiceStrategy, BlockImport,
 	};
 	use dothereum_primitives::{Block, DigestItem, Signature};
+	use dothereum_runtime::{BalancesCall, Call, UncheckedExtrinsic, Address};
 	use dothereum_runtime::constants::{currency::CENTS, time::SLOT_DURATION};
-	use dothereum_runtime::{Address, BalancesCall, Call, UncheckedExtrinsic};
-	use finality_tracker;
-	use keyring::AccountKeyring;
+	use codec::{Encode, Decode};
 	use primitives::{crypto::Pair as CryptoPair, H256};
-	use sr_primitives::traits::IdentifyAccount;
 	use sr_primitives::{
-		generic::{BlockId, Digest, Era, SignedPayload},
+		generic::{BlockId, Era, Digest, SignedPayload},
 		traits::Block as BlockT,
 		traits::Verify,
 		OpaqueExtrinsic,
 	};
-	use std::sync::Arc;
+	use sp_timestamp;
+	use sp_finality_tracker;
+	use keyring::AccountKeyring;
 	use substrate_service::{AbstractService, Roles};
-	use timestamp;
+	use crate::service::new_full;
+	use sr_primitives::traits::IdentifyAccount;
 
 	type AccountPublic = <Signature as Verify>::Signer;
 
@@ -388,8 +384,8 @@ mod tests {
 	fn test_sync() {
 		use primitives::ed25519::Pair;
 
-		use client::{BlockImportParams, BlockOrigin};
 		use {service_test, Factory};
+		use client::{BlockImportParams, BlockOrigin};
 
 		let alice: Arc<ed25519::Pair> = Arc::new(Keyring::Alice.into());
 		let bob: Arc<ed25519::Pair> = Arc::new(Keyring::Bob.into());
@@ -407,9 +403,7 @@ mod tests {
 				force_delay: 0,
 				handle: dummy_runtime.executor(),
 			};
-			let (proposer, _, _) = proposer_factory
-				.init(&parent_header, &validators, alice.clone())
-				.unwrap();
+			let (proposer, _, _) = proposer_factory.init(&parent_header, &validators, alice.clone()).unwrap();
 			let block = proposer.propose().expect("Error making test block");
 			BlockImportParams {
 				origin: BlockOrigin::File,
@@ -422,26 +416,23 @@ mod tests {
 			}
 		};
 		let extrinsic_factory =
-			|service: &SyncService<<Factory as service::ServiceFactory>::FullService>| {
-				let payload = (
-					0,
-					Call::Balances(BalancesCall::transfer(
-						RawAddress::Id(bob.public().0.into()),
-						69.into(),
-					)),
-					Era::immortal(),
-					service.client().genesis_hash(),
-				);
-				let signature = alice.sign(&payload.encode()).into();
-				let id = alice.public().0.into();
-				let xt = UncheckedExtrinsic {
-					signature: Some((RawAddress::Id(id), signature, payload.0, Era::immortal())),
-					function: payload.1,
-				}
-				.encode();
-				let v: Vec<u8> = Decode::decode(&mut xt.as_slice()).unwrap();
-				OpaqueExtrinsic(v)
-			};
+			|service: &SyncService<<Factory as service::ServiceFactory>::FullService>|
+		{
+			let payload = (
+				0,
+				Call::Balances(BalancesCall::transfer(RawAddress::Id(bob.public().0.into()), 69.into())),
+				Era::immortal(),
+				service.client().genesis_hash()
+			);
+			let signature = alice.sign(&payload.encode()).into();
+			let id = alice.public().0.into();
+			let xt = UncheckedExtrinsic {
+				signature: Some((RawAddress::Id(id), signature, payload.0, Era::immortal())),
+				function: payload.1,
+			}.encode();
+			let v: Vec<u8> = Decode::decode(&mut xt.as_slice()).unwrap();
+			OpaqueExtrinsic(v)
+		};
 		service_test::sync(
 			chain_spec::integration_test_config(),
 			|config| new_full(config),
@@ -459,10 +450,9 @@ mod tests {
 	#[ignore]
 	fn test_sync() {
 		let keystore_path = tempfile::tempdir().expect("Creates keystore path");
-		let keystore = keystore::Store::open(keystore_path.path(), None).expect("Creates keystore");
-		let alice = keystore
-			.write()
-			.insert_ephemeral_from_seed::<babe::AuthorityPair>("//Alice")
+		let keystore = keystore::Store::open(keystore_path.path(), None)
+			.expect("Creates keystore");
+		let alice = keystore.write().insert_ephemeral_from_seed::<babe::AuthorityPair>("//Alice")
 			.expect("Creates authority pair");
 
 		let chain_spec = crate::chain_spec::tests::integration_test_config_with_single_authority();
@@ -479,14 +469,12 @@ mod tests {
 			chain_spec,
 			|config| {
 				let mut setup_handles = None;
-				new_full!(
-					config,
-					|block_import: &babe::BabeBlockImport<_, _, Block, _, _, _>,
-					 babe_link: &babe::BabeLink<Block>| {
-						setup_handles = Some((block_import.clone(), babe_link.clone()));
-					}
-				)
-				.map(move |(node, x)| (node, (x, setup_handles.unwrap())))
+				new_full!(config, |
+					block_import: &babe::BabeBlockImport<_, _, Block, _, _, _>,
+					babe_link: &babe::BabeLink<Block>,
+				| {
+					setup_handles = Some((block_import.clone(), babe_link.clone()));
+				}).map(move |(node, x)| (node, (x, setup_handles.unwrap())))
 			},
 			|mut config| {
 				// light nodes are unsupported
@@ -497,7 +485,7 @@ mod tests {
 				let mut inherent_data = inherent_data_providers
 					.create_inherent_data()
 					.expect("Creates inherent data.");
-				inherent_data.replace_data(finality_tracker::INHERENT_IDENTIFIER, &1u64);
+				inherent_data.replace_data(sp_finality_tracker::INHERENT_IDENTIFIER, &1u64);
 
 				let parent_id = BlockId::number(service.client().info().chain.best_number);
 				let parent_header = service.client().header(&parent_id).unwrap().unwrap();
@@ -511,8 +499,7 @@ mod tests {
 				// even though there's only one authority some slots might be empty,
 				// so we must keep trying the next slots until we can claim one.
 				let babe_pre_digest = loop {
-					inherent_data
-						.replace_data(timestamp::INHERENT_IDENTIFIER, &(slot_num * SLOT_DURATION));
+					inherent_data.replace_data(sp_timestamp::INHERENT_IDENTIFIER, &(slot_num * SLOT_DURATION));
 					if let Some(babe_pre_digest) = babe::test_helpers::claim_slot(
 						slot_num,
 						&parent_header,
@@ -526,17 +513,14 @@ mod tests {
 					slot_num += 1;
 				};
 
-				digest.push(<DigestItem as CompatibleDigestItem>::babe_pre_digest(
-					babe_pre_digest,
-				));
+				digest.push(<DigestItem as CompatibleDigestItem>::babe_pre_digest(babe_pre_digest));
 
 				let mut proposer = proposer_factory.init(&parent_header).unwrap();
-				let new_block = futures03::executor::block_on(proposer.propose(
+				let new_block = futures::executor::block_on(proposer.propose(
 					inherent_data,
 					digest,
 					std::time::Duration::from_secs(1),
-				))
-				.expect("Error making test block");
+				)).expect("Error making test block");
 
 				let (new_header, new_body) = new_block.deconstruct();
 				let pre_hash = new_header.hash();
@@ -544,7 +528,9 @@ mod tests {
 				// add it to a digest item.
 				let to_sign = pre_hash.encode();
 				let signature = alice.sign(&to_sign[..]);
-				let item = <DigestItem as CompatibleDigestItem>::babe_seal(signature.into());
+				let item = <DigestItem as CompatibleDigestItem>::babe_seal(
+					signature.into(),
+				);
 				slot_num += 1;
 
 				let params = BlockImportParams {
@@ -559,8 +545,7 @@ mod tests {
 					allow_missing_state: false,
 				};
 
-				block_import
-					.import_block(params, Default::default())
+				block_import.import_block(params, Default::default())
 					.expect("error importing test block");
 			},
 			|service, _| {
@@ -569,11 +554,7 @@ mod tests {
 				let from: Address = AccountPublic::from(charlie.public()).into_account().into();
 				let genesis_hash = service.client().block_hash(0).unwrap().unwrap();
 				let best_block_id = BlockId::number(service.client().info().chain.best_number);
-				let version = service
-					.client()
-					.runtime_version_at(&best_block_id)
-					.unwrap()
-					.spec_version;
+				let version = service.client().runtime_version_at(&best_block_id).unwrap().spec_version;
 				let signer = charlie.clone();
 
 				let function = Call::Balances(BalancesCall::transfer(to.into(), amount));
@@ -596,13 +577,18 @@ mod tests {
 				let raw_payload = SignedPayload::from_raw(
 					function,
 					extra,
-					(version, genesis_hash, genesis_hash, (), (), (), ()),
+					(version, genesis_hash, genesis_hash, (), (), (), ())
 				);
-				let signature = raw_payload.using_encoded(|payload| signer.sign(payload));
+				let signature = raw_payload.using_encoded(|payload|	{
+					signer.sign(payload)
+				});
 				let (function, extra, _) = raw_payload.deconstruct();
-				let xt =
-					UncheckedExtrinsic::new_signed(function, from.into(), signature.into(), extra)
-						.encode();
+				let xt = UncheckedExtrinsic::new_signed(
+					function,
+					from.into(),
+					signature.into(),
+					extra,
+				).encode();
 				let v: Vec<u8> = Decode::decode(&mut xt.as_slice()).unwrap();
 
 				index += 1;
@@ -622,7 +608,10 @@ mod tests {
 				config.roles = Roles::FULL;
 				new_full(config)
 			},
-			vec!["//Alice".into(), "//Bob".into()],
+			vec![
+				"//Alice".into(),
+				"//Bob".into(),
+			],
 		)
 	}
 }

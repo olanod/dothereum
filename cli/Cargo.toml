@@ -91,7 +91,6 @@ wasm-bindgen-futures = { version = "0.4.5", optional = true }
 [dev-dependencies]
 consensus-common = { package = "substrate-consensus-common", git = "https://github.com/paritytech/substrate.git" }
 futures = "0.3.1"
-futures03 = { package = "futures-preview", version = "0.3.0-alpha.19" }
 keystore = { package = "substrate-keystore", git = "https://github.com/paritytech/substrate.git" }
 service-test = { package = "substrate-service-test", git = "https://github.com/paritytech/substrate.git" }
 tempfile = "3.1.0"

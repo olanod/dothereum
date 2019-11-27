@@ -16,7 +16,7 @@
 // along with Dothereum.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::ChainSpec;
-use futures::{prelude::*, sync::oneshot, sync::mpsc};
+use futures01::{prelude::*, sync::oneshot, sync::mpsc};
 use libp2p::wasm_ext;
 use log::{debug, info};
 use std::sync::Arc;
@@ -58,7 +58,7 @@ fn start_inner(wasm_ext: wasm_ext::ffi::Transport) -> Result<Client, Box<dyn std
 
 	info!("  _ _    Dothereum browser node");
 	info!(" | | \\      version {}", config.full_version());
-	info!(" | |\\_\\     by Schoedon, Akinfiev, 2019 - 2020");
+	info!(" | |\\_\\     by Schoedon, Akinfiev, Pickle, 2019 - 2020");
 	info!(" | |/ /  Chain specification: {}", config.chain_spec.name());
 	info!(" |_|_/   Node name: {}", config.name);
 	info!("         Roles: {:?}", config.roles);
@@ -72,7 +72,7 @@ fn start_inner(wasm_ext: wasm_ext::ffi::Transport) -> Result<Client, Box<dyn std
 	// `service.poll()`.
 	// The rest consists in handling RPC requests.
 	let (rpc_send_tx, mut rpc_send_rx) = mpsc::unbounded::<RpcMessage>();
-	wasm_bindgen_futures::spawn_local(futures::future::poll_fn(move || {
+	wasm_bindgen_futures::spawn_local(futures01::future::poll_fn(move || {
 		loop {
 			match rpc_send_rx.poll() {
 				Ok(Async::Ready(Some(message))) => {
