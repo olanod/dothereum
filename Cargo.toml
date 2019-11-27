@@ -41,8 +41,8 @@ substrate-service = { git = 'https://github.com/paritytech/substrate.git' }
 inherents = { package = "substrate-inherents", git = 'https://github.com/paritytech/substrate.git' }
 transaction-pool = { package = "substrate-transaction-pool", git = 'https://github.com/paritytech/substrate.git' }
 network = { package = "substrate-network", git = 'https://github.com/paritytech/substrate.git' }
-babe = { package = "substrate-consensus-babe", git = 'https://github.com/paritytech/substrate.git' }
-babe-primitives = { package = "substrate-consensus-babe-primitives", git = 'https://github.com/paritytech/substrate.git' }
+aura = { package = "substrate-consensus-aura", git = 'https://github.com/paritytech/substrate.git' }
+aura-primitives = { package = "substrate-consensus-aura-primitives", git = 'https://github.com/paritytech/substrate.git' }
 grandpa = { package = "substrate-finality-grandpa", git = 'https://github.com/paritytech/substrate.git' }
 grandpa-primitives = { package = "substrate-finality-grandpa-primitives", git = 'https://github.com/paritytech/substrate.git' }
 substrate-client = { git = 'https://github.com/paritytech/substrate.git' }

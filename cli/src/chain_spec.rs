@@ -17,22 +17,22 @@
 
 //! Dothereum chain configurations.
 
+use aura_primitives::AuthorityId as AuraId;
 use chain_spec::ChainSpecExtension;
-use primitives::{Pair, Public, sr25519};
-use serde::{Serialize, Deserialize};
-use dothereum_runtime::{
-	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, ContractsConfig, CouncilConfig, DemocracyConfig,
-	GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SudoConfig,
-	SystemConfig, TechnicalCommitteeConfig, WASM_BINARY,
-};
-use dothereum_runtime::Block;
 use dothereum_runtime::constants::currency::*;
+use dothereum_runtime::Block;
+use dothereum_runtime::{
+	AuraConfig, BalancesConfig, ContractsConfig, GrandpaConfig, IndicesConfig, SessionConfig,
+	SessionKeys, SudoConfig, SystemConfig, TechnicalCommitteeConfig, WASM_BINARY,
+};
+use grandpa_primitives::AuthorityId as GrandpaId;
+use primitives::{sr25519, Pair, Public};
+use serde::{Deserialize, Serialize};
+use sr_primitives::{
+	traits::{IdentifyAccount, Verify},
+	Perbill,
+};
 use substrate_service;
-use grandpa_primitives::{AuthorityId as GrandpaId};
-use babe_primitives::{AuthorityId as BabeId};
-use im_online::sr25519::{AuthorityId as ImOnlineId};
-use authority_discovery_primitives::AuthorityId as AuthorityDiscoveryId;
-use sr_primitives::{Perbill, traits::{Verify, IdentifyAccount}};
 
 pub use dothereum_primitives::{AccountId, Balance, Signature};
 pub use dothereum_runtime::GenesisConfig;
@@ -50,10 +50,7 @@ pub struct Extensions {
 }
 
 /// Specialized `ChainSpec`.
-pub type ChainSpec = substrate_service::ChainSpec<
-	GenesisConfig,
-	Extensions,
->;
+pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig, Extensions>;
 /// Dothereum Alpha testnet generator
 pub fn alpha_xth_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/alpha-xth.json")[..])
@@ -67,13 +64,8 @@ pub fn gamma_xth_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/gamma-xth.json")[..])
 }
 
-fn session_keys(
-	grandpa: GrandpaId,
-	babe: BabeId,
-	im_online: ImOnlineId,
-	authority_discovery: AuthorityDiscoveryId,
-) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, authority_discovery }
+fn session_keys(grandpa: GrandpaId, aura: AuraId) -> SessionKeys {
+	SessionKeys { grandpa, aura }
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -84,34 +76,24 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 }
 
 /// Helper function to generate an account ID from seed
-pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
-	AccountPublic: From<<TPublic::Pair as Pair>::Public>
+pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
+where
+	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-/// Helper function to generate stash, controller and session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (
-	AccountId,
-	AccountId,
-	GrandpaId,
-	BabeId,
-	ImOnlineId,
-	AuthorityDiscoveryId,
-) {
+/// Helper function to generate grandpa and aura key from seed
+pub fn get_authority_keys_from_seed(seed: &str) -> (GrandpaId, AuraId) {
 	(
-		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
-		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
-		get_from_seed::<BabeId>(seed),
-		get_from_seed::<ImOnlineId>(seed),
-		get_from_seed::<AuthorityDiscoveryId>(seed),
+		get_from_seed::<AuraId>(seed),
 	)
 }
 
 /// Helper function to create GenesisConfig for testing
 pub fn testnet_genesis(
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
+	initial_authorities: Vec<(GrandpaId, AuraId)>,
 	root_key: AccountId,
 	endowed_accounts: Option<Vec<AccountId>>,
 	enable_println: bool,
@@ -142,41 +124,31 @@ pub fn testnet_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned()
+			balances: endowed_accounts
+				.iter()
+				.cloned()
 				.map(|k| (k, ENDOWMENT))
 				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
 				.collect(),
 			vesting: vec![],
 		}),
 		indices: Some(IndicesConfig {
-			ids: endowed_accounts.iter().cloned()
+			ids: endowed_accounts
+				.iter()
+				.cloned()
 				.chain(initial_authorities.iter().map(|x| x.0.clone()))
 				.collect::<Vec<_>>(),
 		}),
 		session: Some(SessionConfig {
-			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
-			}).collect::<Vec<_>>(),
-		}),
-		staking: Some(StakingConfig {
-			current_era: 0,
-			validator_count: initial_authorities.len() as u32 * 2,
-			minimum_validator_count: initial_authorities.len() as u32,
-			stakers: initial_authorities.iter().map(|x| {
-				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
-			}).collect(),
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
-			slash_reward_fraction: Perbill::from_percent(10),
-			.. Default::default()
-		}),
-		democracy: Some(DemocracyConfig::default()),
-		collective_Instance1: Some(CouncilConfig {
-			members: vec![],
-			phantom: Default::default(),
-		}),
-		collective_Instance2: Some(TechnicalCommitteeConfig {
-			members: vec![],
-			phantom: Default::default(),
+			keys: initial_authorities
+				.iter()
+				.map(|x| {
+					(
+						x.0.clone(),
+						session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()),
+					)
+				})
+				.collect::<Vec<_>>(),
 		}),
 		contracts: Some(ContractsConfig {
 			current_schedule: contracts::Schedule {
@@ -185,31 +157,22 @@ pub fn testnet_genesis(
 			},
 			gas_price: 1 * MILLICENTS,
 		}),
-		sudo: Some(SudoConfig {
-			key: root_key,
-		}),
-		babe: Some(BabeConfig {
-			authorities: vec![],
-		}),
-		im_online: Some(ImOnlineConfig {
-			keys: vec![],
-		}),
-		authority_discovery: Some(AuthorityDiscoveryConfig {
-			keys: vec![],
+		sudo: Some(SudoConfig { key: root_key }),
+		aura: Some(AuraConfig {
+			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
 		}),
 		grandpa: Some(GrandpaConfig {
-			authorities: vec![],
+			authorities: initial_authorities
+				.iter()
+				.map(|x| (x.1.clone(), 1))
+				.collect(),
 		}),
-		membership_Instance1: Some(Default::default()),
-		treasury: Some(Default::default()),
 	}
 }
 
 fn development_config_genesis() -> GenesisConfig {
 	testnet_genesis(
-		vec![
-			get_authority_keys_from_seed("Alice"),
-		],
+		vec![get_authority_keys_from_seed("Alice")],
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		None,
 		true,
@@ -260,14 +223,12 @@ pub fn local_testnet_config() -> ChainSpec {
 pub(crate) mod tests {
 	use super::*;
 	use crate::service::new_full;
-	use substrate_service::Roles;
 	use service_test;
+	use substrate_service::Roles;
 
 	fn local_testnet_genesis_instant_single() -> GenesisConfig {
 		testnet_genesis(
-			vec![
-				get_authority_keys_from_seed("Alice"),
-			],
+			vec![get_authority_keys_from_seed("Alice")],
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			None,
 			false,
