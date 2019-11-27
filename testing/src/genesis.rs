@@ -20,7 +20,7 @@
 use crate::keyring::*;
 use keyring::{Ed25519Keyring, Sr25519Keyring};
 use dothereum_runtime::{
-	GenesisConfig, BalancesConfig, SessionConfig, AuraConfig, SystemConfig,
+	GenesisConfig, BalancesConfig, SessionConfig, StakingConfig, SystemConfig,
 	GrandpaConfig, IndicesConfig, ContractsConfig, WASM_BINARY,
 };
 use dothereum_runtime::constants::currency::*;
