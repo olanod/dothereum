@@ -41,8 +41,3 @@ wasmi-errno = [
 wasmtime = [
   "substrate-executor/wasmtime",
 ]
-
-[[bench]]
-name = "bench"
-harness = false
-
