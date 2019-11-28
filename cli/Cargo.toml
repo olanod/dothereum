@@ -35,7 +35,7 @@ sr-primitives = { git = "https://github.com/paritytech/substrate.git" }
 
 # client dependencies
 authority-discovery = { package = "substrate-authority-discovery", git = "https://github.com/paritytech/substrate.git" }
-babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git", features = [ "test-helpers" ] }
+babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git" }
 chain-spec = { package = "substrate-chain-spec", git = "https://github.com/paritytech/substrate.git" }
 client = { package = "substrate-client", git = "https://github.com/paritytech/substrate.git" }
 client-api = { package = "substrate-client-api", git = "https://github.com/paritytech/substrate.git" }
@@ -47,7 +47,8 @@ substrate-basic-authorship = { git = "https://github.com/paritytech/substrate.gi
 substrate-rpc = { package = "substrate-rpc", git = "https://github.com/paritytech/substrate.git" }
 substrate-service = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 substrate-telemetry = { package = "substrate-telemetry", git = "https://github.com/paritytech/substrate.git" }
-transaction_pool = { package = "sc-transaction-pool", git = "https://github.com/paritytech/substrate.git" }
+txpool = { package = "sc-transaction-pool", git = "https://github.com/paritytech/substrate.git" }
+txpool-api = { package = "sp-transaction-pool-api", git = "https://github.com/paritytech/substrate.git" }
 
 # frame dependencies
 balances = { package = "pallet-balances", git = "https://github.com/paritytech/substrate.git" }
@@ -73,7 +74,7 @@ tokio = { version = "0.1.22", optional = true }
 transaction-factory = { optional = true, git = "https://github.com/paritytech/substrate.git" }
 
 # WASM-specific dependencies
-clear_on_drop = { version = "0.2.3", features = ["no_cc"], optional = true }  # Imported just for the `no_cc` feature
+clear_on_drop = { version = "0.2.3", features = ["no_cc"], optional = true }
 console_error_panic_hook = { version = "0.1.6", optional = true }
 console_log = { version = "0.1.2", optional = true }
 js-sys = { version = "0.3.32", optional = true }
@@ -84,7 +85,7 @@ wasm-bindgen = { version = "0.2.55", optional = true }
 wasm-bindgen-futures = { version = "0.4.5", optional = true }
 
 [dev-dependencies]
-babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git" }
+babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git", features = [ "test-helpers" ] }
 consensus-common = { package = "substrate-consensus-common", git = "https://github.com/paritytech/substrate.git" }
 futures = "0.3.1"
 keystore = { package = "substrate-keystore", git = "https://github.com/paritytech/substrate.git" }
