@@ -914,7 +914,7 @@ mod tests {
 			None,
 		).0.unwrap();
 
-		assert!(t.ext().storage_changes_root(GENESIS_HASH.into()).unwrap().is_some());
+		assert!(t.ext().storage_changes_root(&GENESIS_HASH.encode()).unwrap().is_some());
 	}
 
 	#[test]
@@ -930,7 +930,7 @@ mod tests {
 			None,
 		).0.unwrap();
 
-		assert!(t.ext().storage_changes_root(GENESIS_HASH.into()).unwrap().is_some());
+		assert!(t.ext().storage_changes_root(&GENESIS_HASH.encode()).unwrap().is_some());
 	}
 
 	#[test]
