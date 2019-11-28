@@ -23,7 +23,7 @@ use serde::{Serialize, Deserialize};
 use dothereum_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, ContractsConfig, CouncilConfig, DemocracyConfig,
 	GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SudoConfig,
-	SystemConfig, TechnicalCommitteeConfig, WASM_BINARY,
+	SystemConfig, TechnicalCommitteeConfig, EVMConfig, WASM_BINARY,
 };
 use dothereum_runtime::Block;
 use dothereum_runtime::constants::currency::*;
@@ -202,6 +202,7 @@ pub fn testnet_genesis(
 		}),
 		membership_Instance1: Some(Default::default()),
 		treasury: Some(Default::default()),
+		evm: Some(EVMConfig::default()),
 	}
 }
 
