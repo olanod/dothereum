@@ -5,12 +5,6 @@ authors = ["Schoedon, Akinfiev, Pickle"]
 description = "Dothereum node implementation in Rust."
 build = "build.rs"
 edition = "2018"
-default-run = "dothereum"
-
-[[bin]]
-name = "dothereum"
-path = "bin/main.rs"
-required-features = ["cli"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -41,7 +35,7 @@ sr-primitives = { git = "https://github.com/paritytech/substrate.git" }
 
 # client dependencies
 authority-discovery = { package = "substrate-authority-discovery", git = "https://github.com/paritytech/substrate.git" }
-babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git" }
+babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git", features = [ "test-helpers" ] }
 chain-spec = { package = "substrate-chain-spec", git = "https://github.com/paritytech/substrate.git" }
 client = { package = "substrate-client", git = "https://github.com/paritytech/substrate.git" }
 client-api = { package = "substrate-client-api", git = "https://github.com/paritytech/substrate.git" }
