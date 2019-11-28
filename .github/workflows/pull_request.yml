@@ -19,10 +19,6 @@ jobs:
         rustc --version
         cargo --version
         rustup --version
-    - name: Create Debug Build
-      run: |
-        cargo build --verbose
-        cargo run -- --version
     - name: Run Test Suite
       run: |
         cargo check --verbose

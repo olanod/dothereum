@@ -9,12 +9,12 @@ primitives = { package = "substrate-primitives", default-features = false, git =
 sr-primitives = { default-features = false, git = 'https://github.com/paritytech/substrate.git' }
 
 [dev-dependencies]
-substrate-serializer = { git = 'https://github.com/paritytech/substrate.git' }
 pretty_assertions = "0.6.1"
+substrate-serializer = { git = 'https://github.com/paritytech/substrate.git' }
 
 [features]
 default = ["std"]
 std = [
-	"primitives/std",
-	"sr-primitives/std",
+  "primitives/std",
+  "sr-primitives/std",
 ]

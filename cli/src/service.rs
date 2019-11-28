@@ -30,7 +30,6 @@ use dothereum_runtime::{GenesisConfig, RuntimeApi};
 use substrate_service::{
 	AbstractService, ServiceBuilder, config::Configuration, error::{Error as ServiceError},
 };
-use transaction_pool::{self, txpool::{Pool as TransactionPool}};
 use inherents::InherentDataProviders;
 use network::construct_simple_protocol;
 
@@ -64,9 +63,13 @@ macro_rules! new_full_start {
 			.with_select_chain(|_config, backend| {
 				Ok(client::LongestChain::new(backend.clone()))
 			})?
-			.with_transaction_pool(|config, client|
-				Ok(transaction_pool::txpool::Pool::new(config, transaction_pool::FullChainApi::new(client)))
-			)?
+			.with_transaction_pool(|config, client, _fetcher| {
+				let pool_api = txpool::FullChainApi::new(client.clone());
+				let pool = txpool::BasicPool::new(config, pool_api);
+				let maintainer = txpool::FullBasicPoolMaintainer::new(pool.pool().clone(), client);
+				let maintainable_pool = txpool_api::MaintainableTransactionPool::new(pool, maintainer);
+				Ok(maintainable_pool)
+			})?
 			.with_import_queue(|_config, client, mut select_chain, _transaction_pool| {
 				let select_chain = select_chain.take()
 					.ok_or_else(|| substrate_service::Error::SelectChainRequired)?;
@@ -97,8 +100,8 @@ macro_rules! new_full_start {
 				import_setup = Some((block_import, grandpa_link, babe_link));
 				Ok(import_queue)
 			})?
-			.with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
-				dothereum_rpc::create(client, pool)
+			.with_rpc_extensions(|client, pool, _backend, fetcher, _remote_blockchain| -> Result<RpcExtension, _> {
+				Ok(dothereum_rpc::create(client, pool, dothereum_rpc::LightDeps::none(fetcher)))
 			})?;
 
 		(builder, import_setup, inherent_data_providers)
@@ -111,9 +114,9 @@ macro_rules! new_full_start {
 /// concrete types instead.
 macro_rules! new_full {
 	($config:expr, $with_startup_data: expr) => {{
-		use futures::sync::mpsc;
+		use futures01::sync::mpsc;
 		use network::DhtEvent;
-		use futures03::{
+		use futures::{
 			compat::Stream01CompatExt,
 			stream::StreamExt,
 			future::{FutureExt, TryFutureExt},
@@ -268,6 +271,17 @@ type ConcreteClient =
 	>;
 #[allow(dead_code)]
 type ConcreteBackend = Backend<ConcreteBlock>;
+#[allow(dead_code)]
+type ConcreteTransactionPool = txpool_api::MaintainableTransactionPool<
+	txpool::BasicPool<
+		txpool::FullChainApi<ConcreteClient, ConcreteBlock>,
+		ConcreteBlock
+	>,
+	txpool::FullBasicPoolMaintainer<
+		ConcreteClient,
+		txpool::FullChainApi<ConcreteClient, Block>
+	>
+>;
 
 /// A specialized configuration object for setting up the node..
 pub type NodeConfiguration<C> = Configuration<C, GenesisConfig, crate::chain_spec::Extensions>;
@@ -281,7 +295,7 @@ pub fn new_full<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 		LongestChain<ConcreteBackend, ConcreteBlock>,
 		NetworkStatus<ConcreteBlock>,
 		NetworkService<ConcreteBlock, crate::service::NodeProtocol, <ConcreteBlock as BlockT>::Hash>,
-		TransactionPool<transaction_pool::FullChainApi<ConcreteClient, ConcreteBlock>>,
+		ConcreteTransactionPool,
 		OffchainWorkers<
 			ConcreteClient,
 			<ConcreteBackend as client_api::backend::Backend<Block, Blake2Hasher>>::OffchainStorage,
@@ -304,9 +318,15 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 		.with_select_chain(|_config, backend| {
 			Ok(LongestChain::new(backend.clone()))
 		})?
-		.with_transaction_pool(|config, client|
-			Ok(TransactionPool::new(config, transaction_pool::FullChainApi::new(client)))
-		)?
+		.with_transaction_pool(|config, client, fetcher| {
+			let fetcher = fetcher
+				.ok_or_else(|| "Trying to start light transaction pool without active fetcher")?;
+			let pool_api = txpool::LightChainApi::new(client.clone(), fetcher.clone());
+			let pool = txpool::BasicPool::new(config, pool_api);
+			let maintainer = txpool::LightBasicPoolMaintainer::with_defaults(pool.pool().clone(), client, fetcher);
+			let maintainable_pool = txpool_api::MaintainableTransactionPool::new(pool, maintainer);
+			Ok(maintainable_pool)
+		})?
 		.with_import_queue_and_fprb(|_config, client, backend, fetcher, _select_chain, _tx_pool| {
 			let fetch_checker = fetcher
 				.map(|fetcher| fetcher.checker().clone())
@@ -345,8 +365,14 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 		.with_finality_proof_provider(|client, backend|
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
 		)?
-		.with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
-			dothereum_rpc::create(client, pool)
+		.with_rpc_extensions(|client, pool, _backend, fetcher, remote_blockchain| -> Result<RpcExtension, _> {
+			let fetcher = fetcher
+				.ok_or_else(|| "Trying to start Dothereum RPC without active fetcher")?;
+			let remote_blockchain = remote_blockchain
+				.ok_or_else(|| "Trying to start Dothereum RPC without active remote blockchain")?;
+
+			let light_deps = dothereum_rpc::LightDeps { remote_blockchain, fetcher };
+			Ok(dothereum_rpc::create(client, pool, Some(light_deps)))
 		})?
 		.build()?;
 
@@ -371,8 +397,8 @@ mod tests {
 		traits::Verify,
 		OpaqueExtrinsic,
 	};
-	use timestamp;
-	use finality_tracker;
+	use sp_timestamp;
+	use sp_finality_tracker;
 	use keyring::AccountKeyring;
 	use substrate_service::{AbstractService, Roles};
 	use crate::service::new_full;
@@ -485,7 +511,7 @@ mod tests {
 				let mut inherent_data = inherent_data_providers
 					.create_inherent_data()
 					.expect("Creates inherent data.");
-				inherent_data.replace_data(finality_tracker::INHERENT_IDENTIFIER, &1u64);
+				inherent_data.replace_data(sp_finality_tracker::INHERENT_IDENTIFIER, &1u64);
 
 				let parent_id = BlockId::number(service.client().info().chain.best_number);
 				let parent_header = service.client().header(&parent_id).unwrap().unwrap();
@@ -499,7 +525,7 @@ mod tests {
 				// even though there's only one authority some slots might be empty,
 				// so we must keep trying the next slots until we can claim one.
 				let babe_pre_digest = loop {
-					inherent_data.replace_data(timestamp::INHERENT_IDENTIFIER, &(slot_num * SLOT_DURATION));
+					inherent_data.replace_data(sp_timestamp::INHERENT_IDENTIFIER, &(slot_num * SLOT_DURATION));
 					if let Some(babe_pre_digest) = babe::test_helpers::claim_slot(
 						slot_num,
 						&parent_header,
@@ -516,7 +542,7 @@ mod tests {
 				digest.push(<DigestItem as CompatibleDigestItem>::babe_pre_digest(babe_pre_digest));
 
 				let mut proposer = proposer_factory.init(&parent_header).unwrap();
-				let new_block = futures03::executor::block_on(proposer.propose(
+				let new_block = futures::executor::block_on(proposer.propose(
 					inherent_data,
 					digest,
 					std::time::Duration::from_secs(1),
@@ -543,6 +569,7 @@ mod tests {
 					auxiliary: Vec::new(),
 					fork_choice: ForkChoiceStrategy::LongestChain,
 					allow_missing_state: false,
+					import_existing: false,
 				};
 
 				block_import.import_block(params, Default::default())
