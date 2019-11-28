@@ -6,6 +6,7 @@ description = "Test utilities for Dothereum node."
 edition = "2018"
 
 [dependencies]
+babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git", features = [ "test-helpers" ] }
 balances = { package = "pallet-balances", git = 'https://github.com/paritytech/substrate.git' }
 client = { package = "substrate-client", git = 'https://github.com/paritytech/substrate.git' }
 codec = { package = "parity-scale-codec", version = "1.1.0" }
