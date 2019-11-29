@@ -14,17 +14,13 @@ runtime_io = { package = "sr-io", git = 'https://github.com/paritytech/substrate
 state_machine = { package = "substrate-state-machine", git = 'https://github.com/paritytech/substrate.git' }
 substrate-executor = { git = 'https://github.com/paritytech/substrate.git' }
 trie = { package = "substrate-trie", git = 'https://github.com/paritytech/substrate.git' }
-trie-root = "0.15.2"
 
 [dev-dependencies]
 balances = { package = "pallet-balances", git = 'https://github.com/paritytech/substrate.git' }
 contracts = { package = "pallet-contracts", git = 'https://github.com/paritytech/substrate.git' }
-criterion = "0.3.0"
 dothereum-testing = { path = "../testing" }
-grandpa = { package = "pallet-grandpa", git = 'https://github.com/paritytech/substrate.git' }
 indices = { package = "pallet-indices", git = 'https://github.com/paritytech/substrate.git' }
 runtime_support = { package = "frame-support", git = 'https://github.com/paritytech/substrate.git' }
-session = { package = "pallet-session", git = 'https://github.com/paritytech/substrate.git' }
 sr-primitives = { git = 'https://github.com/paritytech/substrate.git' }
 system = { package = "frame-system", git = 'https://github.com/paritytech/substrate.git' }
 test-client = { package = "substrate-test-client", git = 'https://github.com/paritytech/substrate.git' }
