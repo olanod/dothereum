@@ -40,7 +40,7 @@ use sr_primitives::traits::{
 use version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
 use version::NativeVersion;
-use primitives::OpaqueMetadata;
+use primitives::{OpaqueMetadata, U256, H160};
 use grandpa::AuthorityList as GrandpaAuthorityList;
 use grandpa::fg_primitives;
 use im_online::sr25519::{AuthorityId as ImOnlineId};
@@ -57,6 +57,7 @@ pub use balances::Call as BalancesCall;
 pub use contracts::Gas;
 pub use support::StorageValue;
 pub use staking::StakerStatus;
+pub use evm::{ConvertAccountId, FeeCalculator};
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
@@ -420,6 +421,36 @@ impl sudo::Trait for Runtime {
 	type Proposal = Call;
 }
 
+// The EVM will use a fixed gas price for now.
+pub struct FixedGasPrice;
+impl FeeCalculator for FixedGasPrice {
+	fn gas_price() -> U256 {
+		// The gas price is always 1 GWei XTH per 1 unit of gas.
+		// Todo: allow users to dynamically adjust the gas price.
+		// https://github.com/dothereum/dothereum/issues/52
+		1_000_000_000.into()
+	}
+}
+// Use truncated account IDs to convert for EVM accounts.
+pub struct TruncatedAccountId;
+impl<AccountId> ConvertAccountId<AccountId> for TruncatedAccountId {
+	fn convert_account_id(_account_id: &AccountId) -> H160 {
+		// Todo: this needs a proper implementation.
+		// Either truncate the first several bits and return the resulting H160;
+		// Or hashing directly is easier to figure this out.
+		// https://github.com/dothereum/dothereum/issues/53
+		unimplemented!();
+	}
+}
+// Implement the EVM Trait for the Dothereum Runtime.
+impl evm::Trait for Runtime {
+	type FeeCalculator = FixedGasPrice;
+	type ConvertAccountId = TruncatedAccountId;
+	type Currency = Balances;
+	type Event = Event;
+	type Precompiles = ();
+}
+
 type SubmitTransaction = TransactionSubmitter<ImOnlineId, Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
@@ -535,6 +566,7 @@ construct_runtime!(
 		Offences: offences::{Module, Call, Storage, Event},
 		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
 		Nicks: nicks::{Module, Call, Storage, Event<T>},
+		EVM: evm::{Module, Call, Storage, Config, Event},
 	}
 );
 
