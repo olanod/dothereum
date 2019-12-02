@@ -34,7 +34,7 @@ use std::sync::Arc;
 
 use dothereum_primitives::{Block, AccountId, Index, Balance};
 use dothereum_runtime::UncheckedExtrinsic;
-use sr_primitives::traits::ProvideRuntimeApi;
+use sp_runtime::traits::ProvideRuntimeApi;
 use txpool_api::TransactionPool;
 
 /// Light client extra dependencies.

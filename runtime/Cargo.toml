@@ -15,21 +15,21 @@ serde = { version = "1.0.103", optional = true }
 sha3 = { version = "0.8.2", default-features = false }
 
 # primitives
-authority-discovery-primitives = { package = "substrate-authority-discovery-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
-babe-primitives = { package = "substrate-consensus-babe-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
-block-builder-api = { package = "substrate-block-builder-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false}
-inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
+authority-discovery-primitives = { package = "sp-authority-discovery", git = "https://github.com/paritytech/substrate.git", default-features = false }
+babe-primitives = { package = "sp-consensus-babe", git = "https://github.com/paritytech/substrate.git", default-features = false }
+block-builder-api = { package = "sp-block-builder", git = "https://github.com/paritytech/substrate.git", default-features = false}
+inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
 node-primitives = { package = "dothereum-primitives", path = "../primitives", default-features = false }
-offchain-primitives = { package = "substrate-offchain-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
-primitives = { package = "substrate-primitives",  git = "https://github.com/paritytech/substrate.git", default-features = false }
-rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
-sr-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-sr-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-sr-staking-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false }
-substrate-keyring = { git = "https://github.com/paritytech/substrate.git", optional = true }
-substrate-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+offchain-primitives = { package = "sp-offchain", git = "https://github.com/paritytech/substrate.git", default-features = false }
+primitives = { package = "sp-core",  git = "https://github.com/paritytech/substrate.git", default-features = false }
+rstd = { package = "sp-std", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-staking = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", optional = true }
+sp-sesssion = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 txpool-runtime-api = { package = "sp-transaction-pool-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false }
-version = { package = "sr-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
+version = { package = "sp-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 # frame dependencies
 authority-discovery = { package = "pallet-authority-discovery", git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -68,7 +68,7 @@ utility = { package = "frame-utility", git = "https://github.com/paritytech/subs
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.4", git = "https://github.com/paritytech/substrate.git" }
 
 [dev-dependencies]
-runtime_io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git" }
+runtime_io = { package = "sp-io", git = "https://github.com/paritytech/substrate.git" }
 
 [features]
 default = ["std"]
@@ -107,12 +107,12 @@ std = [
   "serde",
   "session/std",
   "sha3/std",
-  "sr-api/std",
-  "sr-primitives/std",
-  "sr-staking-primitives/std",
+  "sp-api/std",
+  "sp-runtime/std",
+  "sp-staking/std",
   "staking/std",
-  "substrate-keyring",
-  "substrate-session/std",
+  "sp-keyring",
+  "sp-sesssion/std",
   "sudo/std",
   "support/std",
   "system-rpc-runtime-api/std",
