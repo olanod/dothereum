@@ -195,6 +195,7 @@ macro_rules! new_full {
 			let authority_discovery = authority_discovery::AuthorityDiscovery::new(
 				service.client(),
 				service.network(),
+				Vec::new(),
 				service.keystore(),
 				future03_dht_event_rx,
 			);
