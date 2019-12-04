@@ -41,6 +41,7 @@ use version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
 use version::NativeVersion;
 use primitives::{OpaqueMetadata, U256, H160};
+use aura_primitives::sr25519::AuthorityId as AuraId;
 use grandpa::AuthorityList as GrandpaAuthorityList;
 use grandpa::fg_primitives;
 use im_online::sr25519::{AuthorityId as ImOnlineId};
@@ -134,15 +135,8 @@ impl utility::Trait for Runtime {
 	type Call = Call;
 }
 
-parameter_types! {
-	pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
-	pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-}
-
-impl babe::Trait for Runtime {
-	type EpochDuration = EpochDuration;
-	type ExpectedBlockTime = ExpectedBlockTime;
-	type EpochChangeTrigger = babe::ExternalTrigger;
+impl aura::Trait for Runtime {
+	type AuthorityId = AuraId;
 }
 
 impl indices::Trait for Runtime {
@@ -193,7 +187,7 @@ parameter_types! {
 }
 impl timestamp::Trait for Runtime {
 	type Moment = Moment;
-	type OnTimestampSet = Babe;
+	type OnTimestampSet = Aura;
 	type MinimumPeriod = MinimumPeriod;
 }
 
@@ -202,7 +196,7 @@ parameter_types! {
 }
 
 impl authorship::Trait for Runtime {
-	type FindAuthor = session::FindAccountFromAuthorIndex<Self, Babe>;
+	type FindAuthor = ();
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
 	type EventHandler = (Staking, ImOnline);
@@ -211,7 +205,7 @@ impl authorship::Trait for Runtime {
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
-		pub babe: Babe,
+		pub aura: Aura,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
 	}
@@ -224,7 +218,7 @@ parameter_types! {
 impl session::Trait for Runtime {
 	type OnSessionEnding = Staking;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type ShouldEndSession = Babe;
+	type ShouldEndSession = Aura;
 	type Event = Event;
 	type Keys = SessionKeys;
 	type ValidatorId = <Self as system::Trait>::AccountId;
@@ -547,7 +541,7 @@ construct_runtime!(
 	{
 		System: system::{Module, Call, Storage, Config, Event},
 		Utility: utility::{Module, Call, Event},
-		Babe: babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
+		Aura: aura::{Module, Config<T>, Inherent(Timestamp)},
 		Timestamp: timestamp::{Module, Call, Storage, Inherent},
 		Authorship: authorship::{Module, Call, Storage, Inherent},
 		Indices: indices,
@@ -664,21 +658,13 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl babe_primitives::BabeApi<Block> for Runtime {
-		fn configuration() -> babe_primitives::BabeConfiguration {
-			// The choice of `c` parameter (where `1 - c` represents the
-			// probability of a slot being empty), is done in accordance to the
-			// slot duration and expected target block time, for safely
-			// resisting network delays of maximum two seconds.
-			// <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-			babe_primitives::BabeConfiguration {
-				slot_duration: Babe::slot_duration(),
-				epoch_length: EpochDuration::get(),
-				c: PRIMARY_PROBABILITY,
-				genesis_authorities: Babe::authorities(),
-				randomness: Babe::randomness(),
-				secondary_slots: true,
-			}
+	impl aura_primitives::AuraApi<Block, AuraId> for Runtime {
+		fn slot_duration() -> u64 {
+			Aura::slot_duration()
+	}
+
+		fn authorities() -> Vec<AuraId> {
+			Aura::authorities()
 		}
 	}
 

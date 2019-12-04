@@ -21,9 +21,9 @@
 
 use std::sync::Arc;
 
-use babe;
 use client::{self, LongestChain};
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
+use aura_primitives::sr25519::{AuthorityPair as AuraPair};
 use dothereum_executor;
 use dothereum_primitives::Block;
 use dothereum_runtime::{GenesisConfig, RuntimeApi};
@@ -80,24 +80,18 @@ macro_rules! new_full_start {
 				)?;
 				let justification_import = grandpa_block_import.clone();
 
-				let (block_import, babe_link) = babe::block_import(
-					babe::Config::get_or_compute(&*client)?,
-					grandpa_block_import,
-					client.clone(),
-					client.clone(),
-				)?;
-
-				let import_queue = babe::import_queue(
-					babe_link.clone(),
-					block_import.clone(),
+				let import_queue = aura::import_queue::<_, _, AuraPair, _>(
+					aura::SlotDuration::get_or_compute(&*client)?,
+					Box::new(grandpa_block_import.clone()),
 					Some(Box::new(justification_import)),
 					None,
-					client.clone(),
 					client,
 					inherent_data_providers.clone(),
+					Some(transaction_pool),
 				)?;
 
-				import_setup = Some((block_import, grandpa_link, babe_link));
+				import_setup = Some((grandpa_block_import, grandpa_link));
+
 				Ok(import_queue)
 			})?
 			.with_rpc_extensions(|client, pool, _backend, fetcher, _remote_blockchain| -> Result<RpcExtension, _> {
@@ -155,10 +149,10 @@ macro_rules! new_full {
 			.with_dht_event_tx(dht_event_tx)?
 			.build()?;
 
-		let (block_import, grandpa_link, babe_link) = import_setup.take()
+		let (block_import, grandpa_link) = import_setup.take()
 				.expect("Link Half and Block Import are present for Full Services or setup failed before. qed");
 
-		($with_startup_data)(&block_import, &babe_link);
+		($with_startup_data)(&block_import, &grandpa_link);
 
 		if participates_in_consensus {
 			let proposer = sc_basic_authority::ProposerFactory {
@@ -173,21 +167,23 @@ macro_rules! new_full {
 			let can_author_with =
 				consensus_common::CanAuthorWithNativeVersion::new(client.executor().clone());
 
-			let babe_config = babe::BabeParams {
-				keystore: service.keystore(),
+			let aura = aura::start_aura::<_, _, _, _, _, AuraPair, _, _, _>(
+				aura::SlotDuration::get_or_compute(&*client)?,
 				client,
 				select_chain,
-				env: proposer,
 				block_import,
-				sync_oracle: service.network(),
-				inherent_data_providers: inherent_data_providers.clone(),
+				proposer,
+				service.network(),
+				inherent_data_providers.clone(),
 				force_authoring,
-				babe_link,
-				can_author_with,
-			};
-
-			let babe = babe::start_babe(babe_config)?;
-			service.spawn_essential_task(babe);
+				service.keystore(),
+			)?;
+		
+			let select = aura.select(service.on_exit()).then(|_| Ok(()));
+		
+			// the AURA authoring task is considered essential, i.e. if it
+			// fails we take down the service with it.
+			service.spawn_essential_task(select);
 
 			let future03_dht_event_rx = dht_event_rx.compat()
 				.map(|x| x.expect("<mpsc::channel::Receiver as Stream> never returns an error; qed"))
@@ -346,21 +342,14 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 			let finality_proof_request_builder =
 				finality_proof_import.create_finality_proof_request_builder();
 
-			let (babe_block_import, babe_link) = babe::block_import(
-				babe::Config::get_or_compute(&*client)?,
-				grandpa_block_import,
-				client.clone(),
-				client.clone(),
-			)?;
-
-			let import_queue = babe::import_queue(
-				babe_link,
-				babe_block_import,
+			let import_queue = aura::import_queue::<_, _, AuraPair, ()>(
+				aura::SlotDuration::get_or_compute(&*client)?,
+				Box::new(grandpa_block_import),
 				None,
 				Some(Box::new(finality_proof_import)),
-				client.clone(),
 				client,
 				inherent_data_providers.clone(),
+				None,
 			)?;
 
 			Ok((import_queue, finality_proof_request_builder))
@@ -386,7 +375,7 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 #[cfg(test)]
 mod tests {
 	use std::sync::Arc;
-	use babe::CompatibleDigestItem;
+	use aura::{CompatibleDigestItem, AuthorityPair as AuraPair};
 	use consensus_common::{
 		Environment, Proposer, BlockImportParams, BlockOrigin, ForkChoiceStrategy, BlockImport,
 	};
@@ -482,7 +471,7 @@ mod tests {
 		let keystore_path = tempfile::tempdir().expect("Creates keystore path");
 		let keystore = keystore::Store::open(keystore_path.path(), None)
 			.expect("Creates keystore");
-		let alice = keystore.write().insert_ephemeral_from_seed::<babe::AuthorityPair>("//Alice")
+		let alice = keystore.write().insert_ephemeral_from_seed::<AuraPair>("//Alice")
 			.expect("Creates authority pair");
 
 		let chain_spec = crate::chain_spec::tests::integration_test_config_with_single_authority();

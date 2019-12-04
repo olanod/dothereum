@@ -21,7 +21,7 @@ use chain_spec::ChainSpecExtension;
 use primitives::{Pair, Public, sr25519};
 use serde::{Serialize, Deserialize};
 use dothereum_runtime::{
-	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, ContractsConfig, CouncilConfig, DemocracyConfig,
+	AuthorityDiscoveryConfig, AuraConfig, BalancesConfig, ContractsConfig, CouncilConfig, DemocracyConfig,
 	GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SudoConfig,
 	SystemConfig, TechnicalCommitteeConfig, EVMConfig, WASM_BINARY,
 };
@@ -29,7 +29,7 @@ use dothereum_runtime::Block;
 use dothereum_runtime::constants::currency::*;
 use sc_service;
 use grandpa_primitives::{AuthorityId as GrandpaId};
-use babe_primitives::{AuthorityId as BabeId};
+use aura_primitives::{AuthorityId as AuraId};
 use im_online::sr25519::{AuthorityId as ImOnlineId};
 use authority_discovery_primitives::AuthorityId as AuthorityDiscoveryId;
 use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
@@ -69,11 +69,11 @@ pub fn gamma_xth_config() -> Result<ChainSpec, String> {
 
 fn session_keys(
 	grandpa: GrandpaId,
-	babe: BabeId,
+	aura: AuraId,
 	im_online: ImOnlineId,
 	authority_discovery: AuthorityDiscoveryId,
 ) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, authority_discovery }
+	SessionKeys { grandpa, aura, im_online, authority_discovery }
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -92,18 +92,14 @@ pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
 
 /// Helper function to generate stash, controller and session key from seed
 pub fn get_authority_keys_from_seed(seed: &str) -> (
-	AccountId,
-	AccountId,
 	GrandpaId,
-	BabeId,
+	AuraId,
 	ImOnlineId,
 	AuthorityDiscoveryId,
 ) {
 	(
-		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
-		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
-		get_from_seed::<BabeId>(seed),
+		get_from_seed::<AuraId>(seed),
 		get_from_seed::<ImOnlineId>(seed),
 		get_from_seed::<AuthorityDiscoveryId>(seed),
 	)
@@ -111,7 +107,7 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (
 
 /// Helper function to create GenesisConfig for testing
 pub fn testnet_genesis(
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
+	initial_authorities: Vec<(GrandpaId, AuraId, ImOnlineId, AuthorityDiscoveryId)>,
 	root_key: AccountId,
 	endowed_accounts: Option<Vec<AccountId>>,
 	enable_println: bool,
@@ -190,7 +186,7 @@ pub fn testnet_genesis(
 		sudo: Some(SudoConfig {
 			key: root_key,
 		}),
-		babe: Some(BabeConfig {
+		aura: Some(AuraConfig {
 			authorities: vec![],
 		}),
 		im_online: Some(ImOnlineConfig {
