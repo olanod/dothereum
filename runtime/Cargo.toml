@@ -27,7 +27,7 @@ sp-api = { git = "https://github.com/paritytech/substrate.git", default-features
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-staking = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", optional = true }
-sp-sesssion = { git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-session = { git = "https://github.com/paritytech/substrate.git", default-features = false }
 txpool-runtime-api = { package = "sp-transaction-pool-runtime-api", git = "https://github.com/paritytech/substrate.git", default-features = false }
 version = { package = "sp-version", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
@@ -112,7 +112,7 @@ std = [
   "sp-staking/std",
   "staking/std",
   "sp-keyring",
-  "sp-sesssion/std",
+  "sp-session/std",
   "sudo/std",
   "support/std",
   "system-rpc-runtime-api/std",
