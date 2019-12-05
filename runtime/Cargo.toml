@@ -14,7 +14,7 @@ safe-mix = { version = "1.0", default-features = false }
 serde = { version = "1.0.103", optional = true }
 sha3 = { version = "0.8.2", default-features = false }
 
-# primitives
+# primitives  
 authority-discovery-primitives = { package = "sp-authority-discovery", git = "https://github.com/paritytech/substrate.git", default-features = false }
 aura-primitives = { package = "sp-consensus-aura", git = "https://github.com/paritytech/substrate.git", default-features = false }
 block-builder-api = { package = "sp-block-builder", git = "https://github.com/paritytech/substrate.git", default-features = false}

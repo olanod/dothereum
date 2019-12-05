@@ -53,6 +53,8 @@ construct_simple_protocol! {
 /// be able to perform chain operations.
 macro_rules! new_full_start {
 	($config:expr) => {{
+		use aura_primitives::sr25519::{AuthorityPair as AuraPair};
+
 		type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 		let mut import_setup = None;
 		let inherent_data_providers = inherents::InherentDataProviders::new();
@@ -70,7 +72,7 @@ macro_rules! new_full_start {
 				let maintainable_pool = txpool_api::MaintainableTransactionPool::new(pool, maintainer);
 				Ok(maintainable_pool)
 			})?
-			.with_import_queue(|_config, client, mut select_chain, _transaction_pool| {
+			.with_import_queue(|_config, client, mut select_chain, transaction_pool| {
 				let select_chain = select_chain.take()
 					.ok_or_else(|| sc_service::Error::SelectChainRequired)?;
 				let (grandpa_block_import, grandpa_link) = grandpa::block_import(
@@ -111,9 +113,9 @@ macro_rules! new_full {
 		use futures01::sync::mpsc;
 		use network::DhtEvent;
 		use futures::{
+			prelude::*,
 			compat::Stream01CompatExt,
-			stream::StreamExt,
-			future::{FutureExt, TryFutureExt},
+			future::{Future, FutureExt, TryFutureExt},
 		};
 
 		let (
@@ -167,7 +169,7 @@ macro_rules! new_full {
 			let can_author_with =
 				consensus_common::CanAuthorWithNativeVersion::new(client.executor().clone());
 
-			let aura = aura::start_aura::<_, _, _, _, _, AuraPair, _, _, _>(
+			let aura = aura::start_aura::<_, _, _, _, _, AuraPair, _, _, _, _>(
 				aura::SlotDuration::get_or_compute(&*client)?,
 				client,
 				select_chain,
@@ -177,6 +179,7 @@ macro_rules! new_full {
 				inherent_data_providers.clone(),
 				force_authoring,
 				service.keystore(),
+				can_author_with,
 			)?;
 		
 			let select = aura.select(service.on_exit()).then(|_| Ok(()));

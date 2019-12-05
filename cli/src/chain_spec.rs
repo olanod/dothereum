@@ -29,7 +29,7 @@ use dothereum_runtime::Block;
 use dothereum_runtime::constants::currency::*;
 use sc_service;
 use grandpa_primitives::{AuthorityId as GrandpaId};
-use aura_primitives::{AuthorityId as AuraId};
+use aura_primitives::sr25519::{AuthorityId as AuraId};
 use im_online::sr25519::{AuthorityId as ImOnlineId};
 use authority_discovery_primitives::AuthorityId as AuthorityDiscoveryId;
 use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
@@ -138,30 +138,25 @@ pub fn testnet_genesis(
 			changes_trie_config: Default::default(),
 		}),
 		balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned()
-				.map(|k| (k, ENDOWMENT))
-				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
-				.collect(),
+			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
 			vesting: vec![],
 		}),
 		indices: Some(IndicesConfig {
-			ids: endowed_accounts.iter().cloned()
-				.chain(initial_authorities.iter().map(|x| x.0.clone()))
-				.collect::<Vec<_>>(),
+			ids: endowed_accounts.clone(),
 		}),
 		session: Some(SessionConfig {
-			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
+			keys: initial_authorities.iter().zip(endowed_accounts.iter()).map(|(i, e)| {
+				(e.clone(), session_keys(i.0.clone(), i.1.clone(), i.2.clone(), i.3.clone()))
 			}).collect::<Vec<_>>(),
 		}),
 		staking: Some(StakingConfig {
 			current_era: 0,
 			validator_count: initial_authorities.len() as u32 * 2,
 			minimum_validator_count: initial_authorities.len() as u32,
-			stakers: initial_authorities.iter().map(|x| {
-				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
+			stakers: endowed_accounts.iter().map(|x| {
+				(x.clone(), x.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+			invulnerables: endowed_accounts.clone(),
 			slash_reward_fraction: Perbill::from_percent(10),
 			.. Default::default()
 		}),
@@ -187,7 +182,7 @@ pub fn testnet_genesis(
 			key: root_key,
 		}),
 		aura: Some(AuraConfig {
-			authorities: vec![],
+			authorities: initial_authorities.iter().map(|x| (x.1.clone())).collect(),
 		}),
 		im_online: Some(ImOnlineConfig {
 			keys: vec![],
@@ -196,7 +191,7 @@ pub fn testnet_genesis(
 			keys: vec![],
 		}),
 		grandpa: Some(GrandpaConfig {
-			authorities: vec![],
+			authorities: initial_authorities.iter().map(|x| (x.0.clone(), 1u64)).collect(),	
 		}),
 		membership_Instance1: Some(Default::default()),
 		treasury: Some(Default::default()),

@@ -213,12 +213,14 @@ impl_opaque_keys! {
 
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+	pub const Period: BlockNumber = 1;
+	pub const Offset: BlockNumber = 0;
 }
 
 impl session::Trait for Runtime {
 	type OnSessionEnding = Staking;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type ShouldEndSession = Aura;
+	type ShouldEndSession = session::PeriodicSessions<Period, Offset>;
 	type Event = Event;
 	type Keys = SessionKeys;
 	type ValidatorId = <Self as system::Trait>::AccountId;

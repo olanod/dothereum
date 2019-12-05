@@ -17,7 +17,7 @@
 
 //! Some configurable implementations as associated type for the Dothereum runtime.
 
-use node_primitives::Balance;
+use node_primitives::{Balance};
 use sp_runtime::traits::{Convert, Saturating};
 use sp_runtime::{Fixed64, Perbill};
 use support::{traits::{OnUnbalanced, Currency, Get}, weights::Weight};

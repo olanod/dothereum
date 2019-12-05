@@ -20,7 +20,7 @@
 use crate::keyring::*;
 use keyring::{Ed25519Keyring, Sr25519Keyring};
 use dothereum_runtime::{
-	GenesisConfig, BalancesConfig, SessionConfig, StakingConfig, SystemConfig,
+	GenesisConfig, BalancesConfig, StakingConfig, SystemConfig, AuraConfig,
 	GrandpaConfig, IndicesConfig, ContractsConfig, WASM_BINARY,
 };
 use dothereum_runtime::constants::currency::*;
@@ -52,22 +52,6 @@ pub fn config(support_changes_trie: bool, code: Option<&[u8]>) -> GenesisConfig 
 			],
 			vesting: vec![],
 		}),
-		session: Some(SessionConfig {
-			keys: vec![
-				(alice(), to_session_keys(
-					&Ed25519Keyring::Alice,
-					&Sr25519Keyring::Alice,
-				)),
-				(bob(), to_session_keys(
-					&Ed25519Keyring::Bob,
-					&Sr25519Keyring::Bob,
-				)),
-				(charlie(), to_session_keys(
-					&Ed25519Keyring::Charlie,
-					&Sr25519Keyring::Charlie,
-				)),
-			]
-		}),
 		staking: Some(StakingConfig {
 			current_era: 0,
 			stakers: vec![
@@ -85,11 +69,12 @@ pub fn config(support_changes_trie: bool, code: Option<&[u8]>) -> GenesisConfig 
 			current_schedule: Default::default(),
 			gas_price: 1 * MILLICENTS,
 		}),
-		babe: Some(Default::default()),
+		aura: Some(AuraConfig {
+			authorities: vec![],
+		}),
 		grandpa: Some(GrandpaConfig {
 			authorities: vec![],
 		}),
-		im_online: Some(Default::default()),
 		authority_discovery: Some(Default::default()),
 		democracy: Some(Default::default()),
 		collective_Instance1: Some(Default::default()),

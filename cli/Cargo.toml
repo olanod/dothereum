@@ -22,7 +22,7 @@ structopt = "0.3.5"
 
 # primitives
 authority-discovery-primitives = { package = "sp-authority-discovery", git = "https://github.com/paritytech/substrate.git" }
-babe-primitives = { package = "sp-consensus-babe", git = "https://github.com/paritytech/substrate.git" }
+aura-primitives = { package = "sp-consensus-aura", git = "https://github.com/paritytech/substrate.git" }
 grandpa_primitives = { package = "sp-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
 inherents = { package = "sp-inherents", git = "https://github.com/paritytech/substrate.git" }
 keyring = { package = "sp-keyring", git = "https://github.com/paritytech/substrate.git" }
