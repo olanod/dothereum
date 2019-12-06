@@ -110,12 +110,14 @@ macro_rules! new_full_start {
 /// concrete types instead.
 macro_rules! new_full {
 	($config:expr, $with_startup_data: expr) => {{
-		use futures01::sync::mpsc;
+		use futures01::{sync::mpsc, future::Future};
 		use network::DhtEvent;
 		use futures::{
+			select,
 			prelude::*,
+			StreamExt, 
 			compat::Stream01CompatExt,
-			future::{Future, FutureExt, TryFutureExt},
+			future::{FutureExt, TryFutureExt},
 		};
 
 		let (
@@ -181,8 +183,9 @@ macro_rules! new_full {
 				service.keystore(),
 				can_author_with,
 			)?;
-		
-			let select = aura.select(service.on_exit()).then(|_| Ok(()));
+			
+			let exit_future = service.on_exit();
+			let select = aura.select(exit_future).then(|_| Ok(()));
 		
 			// the AURA authoring task is considered essential, i.e. if it
 			// fails we take down the service with it.
@@ -380,6 +383,7 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 mod tests {
 	use std::sync::Arc;
 	use aura::{CompatibleDigestItem, AuthorityPair as AuraPair};
+	use grandpa::LinkHalf;
 	use consensus_common::{
 		Environment, Proposer, BlockImportParams, BlockOrigin, ForkChoiceStrategy, BlockImport,
 	};
@@ -493,10 +497,10 @@ mod tests {
 			|config| {
 				let mut setup_handles = None;
 				new_full!(config, |
-					block_import: &babe::BabeBlockImport<_, _, Block, _, _, _>,
-					babe_link: &babe::BabeLink<Block>,
+					block_import: &grandpa::GrandpaBlockImport<_, _, Block, _, _, _>,
+					grandpa_link: &grandpa::LinkHalf<Block>,
 				| {
-					setup_handles = Some((block_import.clone(), babe_link.clone()));
+					setup_handles = Some((block_import.clone(), grandpa_link.clone()));
 				}).map(move |(node, x)| (node, (x, setup_handles.unwrap())))
 			},
 			|mut config| {
@@ -504,7 +508,7 @@ mod tests {
 				config.roles = Roles::FULL;
 				new_full(config)
 			},
-			|service, &mut (ref inherent_data_providers, (ref mut block_import, ref babe_link))| {
+			|service, &mut (ref inherent_data_providers, (ref mut block_import, ref grandpa_link))| {
 				let mut inherent_data = inherent_data_providers
 					.create_inherent_data()
 					.expect("Creates inherent data.");
@@ -521,20 +525,21 @@ mod tests {
 
 				// even though there's only one authority some slots might be empty,
 				// so we must keep trying the next slots until we can claim one.
-				let babe_pre_digest = loop {
-					inherent_data.replace_data(sp_timestamp::INHERENT_IDENTIFIER, &(slot_num * SLOT_DURATION));
-					if let Some(babe_pre_digest) = babe::test_helpers::claim_slot(
-						slot_num,
-						&parent_header,
-						&*service.client(),
-						&keystore,
-						&babe_link,
-					) {
-						break babe_pre_digest;
-					}
+				let aura_pre_digest = aura::
+				// let babe_pre_digest = loop {
+					// 	inherent_data.replace_data(sp_timestamp::INHERENT_IDENTIFIER, &(slot_num * SLOT_DURATION));
+				// 	if let Some(babe_pre_digest) = babe::test_helpers::claim_slot(
+				// 		slot_num,
+				// 		&parent_header,
+				// 		&*service.client(),
+				// 		&keystore,
+				// 		&babe_link,
+				// 	) {
+				// 		break babe_pre_digest;
+				// 	}
 
-					slot_num += 1;
-				};
+				// 	slot_num += 1;
+				// };
 
 				digest.push(<DigestItem as CompatibleDigestItem>::babe_pre_digest(babe_pre_digest));
 
