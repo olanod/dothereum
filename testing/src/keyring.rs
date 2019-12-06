@@ -19,7 +19,7 @@
 
 use keyring::{AccountKeyring, Sr25519Keyring, Ed25519Keyring};
 use dothereum_primitives::{AccountId, Balance, Index};
-use dothereum_runtime::{CheckedExtrinsic, UncheckedExtrinsic, SignedExtra};
+use dothereum_runtime::{CheckedExtrinsic, UncheckedExtrinsic, SessionKeys, SignedExtra};
 use sp_runtime::generic::Era;
 use codec::Encode;
 
@@ -49,6 +49,19 @@ pub fn eve() -> AccountId {
 /// Ferdie's account id.
 pub fn ferdie() -> AccountId {
 	AccountKeyring::Ferdie.into()
+}
+
+/// Convert keyrings into `SessionKeys`.
+pub fn to_session_keys(
+	ed25519_keyring: &Ed25519Keyring,
+	sr25519_keyring: &Sr25519Keyring,
+) -> SessionKeys {
+	SessionKeys {
+		grandpa: ed25519_keyring.to_owned().public().into(),
+		aura: sr25519_keyring.to_owned().public().into(),
+		im_online: sr25519_keyring.to_owned().public().into(),
+		authority_discovery: sr25519_keyring.to_owned().public().into(),
+	}
 }
 
 /// Returns transaction extra.
