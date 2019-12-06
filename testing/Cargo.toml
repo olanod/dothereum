@@ -6,19 +6,19 @@ description = "Test utilities for Dothereum node."
 edition = "2018"
 
 [dependencies]
-babe = { package = "substrate-consensus-babe", git = "https://github.com/paritytech/substrate.git", features = [ "test-helpers" ] }
-client = { package = "substrate-client", git = 'https://github.com/paritytech/substrate.git' }
+babe = { package = "sc-consensus-babe", git = "https://github.com/paritytech/substrate.git", features = [ "test-helpers" ] }
+client = { package = "sc-client", git = 'https://github.com/paritytech/substrate.git' }
 codec = { package = "parity-scale-codec", version = "1.1.0" }
 dothereum-executor = { path = "../executor" }
 dothereum-primitives = { path = "../primitives" }
 dothereum-runtime = { path = "../runtime" }
 indices = { package = "pallet-indices", git = 'https://github.com/paritytech/substrate.git' }
-keyring = { package = "substrate-keyring", git = 'https://github.com/paritytech/substrate.git' }
-primitives = { package = "substrate-primitives", git = 'https://github.com/paritytech/substrate.git' }
-runtime-io = { package = "sr-io", git = 'https://github.com/paritytech/substrate.git' }
-sr-primitives = { git = 'https://github.com/paritytech/substrate.git' }
+keyring = { package = "sp-keyring", git = 'https://github.com/paritytech/substrate.git' }
+primitives = { package = "sp-core", git = 'https://github.com/paritytech/substrate.git' }
+runtime-io = { package = "sp-io", git = 'https://github.com/paritytech/substrate.git' }
+sp-runtime = { git = 'https://github.com/paritytech/substrate.git' }
 staking = { package = "pallet-staking", git = 'https://github.com/paritytech/substrate.git' }
-substrate-executor = { git = 'https://github.com/paritytech/substrate.git' }
+sc-executor = { git = 'https://github.com/paritytech/substrate.git' }
 system = { package = "frame-system", git = 'https://github.com/paritytech/substrate.git' }
 test-client = { package = "substrate-test-client", git = 'https://github.com/paritytech/substrate.git' }
 transaction-payment = { package = "pallet-transaction-payment", git = 'https://github.com/paritytech/substrate.git' }

@@ -17,13 +17,13 @@
 
 //! Utilites to build a `TestClient` for `dothereum-runtime`.
 
-use sr_primitives::BuildStorage;
+use sp_runtime::BuildStorage;
 
 /// Re-export test-client utilities.
 pub use test_client::*;
 
 /// Call executor for `dothereum-runtime` `TestClient`.
-pub type Executor = substrate_executor::NativeExecutor<dothereum_executor::Executor>;
+pub type Executor = sc_executor::NativeExecutor<dothereum_executor::Executor>;
 
 /// Default backend type.
 pub type Backend = client_db::Backend<dothereum_primitives::Block>;

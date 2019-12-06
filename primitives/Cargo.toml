@@ -5,12 +5,12 @@ authors = ["Parity Technologies"]
 edition = "2018"
 
 [dependencies]
-primitives = { package = "substrate-primitives", default-features = false, git = 'https://github.com/paritytech/substrate.git' }
-sr-primitives = { default-features = false, git = 'https://github.com/paritytech/substrate.git' }
+primitives = { package = "sp-core", default-features = false, git = 'https://github.com/paritytech/substrate.git' }
+sp-runtime = { default-features = false, git = 'https://github.com/paritytech/substrate.git' }
 
 [features]
 default = ["std"]
 std = [
   "primitives/std",
-  "sr-primitives/std",
+  "sp-runtime/std",
 ]

@@ -21,13 +21,13 @@
 
 use futures::channel::oneshot;
 use futures::{future, FutureExt};
-use substrate_cli::VersionInfo;
+use sc_cli::VersionInfo;
 
 use std::cell::RefCell;
 
 // handles ctrl-c
 struct Exit;
-impl substrate_cli::IntoExit for Exit {
+impl sc_cli::IntoExit for Exit {
 	type Exit = future::Map<oneshot::Receiver<()>, fn(Result<(), oneshot::Canceled>) -> ()>;
 	fn into_exit(self) -> Self::Exit {
 		// can't use signal directly here because CtrlC takes only `Fn`.
@@ -44,7 +44,7 @@ impl substrate_cli::IntoExit for Exit {
 	}
 }
 
-fn main() -> Result<(), substrate_cli::error::Error> {
+fn main() -> Result<(), sc_cli::error::Error> {
 	let version = VersionInfo {
 		name: "Dothereum Node",
 		commit: env!("VERGEN_SHA_SHORT"),
