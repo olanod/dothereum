@@ -1,10 +1,27 @@
+// Copyright 2017-2019 Parity Technologies (UK) Ltd.
+// Copyright 2019-2020 Dothereum UG (DE).
+// This file is part of Dothereum.
+
+// Dothereum is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Dothereum is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Dothereum.  If not, see <http://www.gnu.org/licenses/>.
+
 use crate::service;
 use futures::{future::{select, Map}, FutureExt, TryFutureExt, channel::oneshot, compat::Future01CompatExt};
 use std::cell::RefCell;
 use tokio::runtime::Runtime;
-pub use substrate_cli::{VersionInfo, IntoExit, error};
-use substrate_cli::{display_role, informant, parse_and_prepare, ParseAndPrepare, NoCustom};
-use substrate_service::{AbstractService, Roles as ServiceRoles, Configuration};
+pub use sc_cli::{VersionInfo, IntoExit, error};
+use sc_cli::{display_role, informant, parse_and_prepare, ParseAndPrepare, NoCustom};
+use sc_service::{AbstractService, Roles as ServiceRoles, Configuration};
 use aura_primitives::sr25519::{AuthorityPair as AuraPair};
 use crate::chain_spec;
 use log::info;
@@ -43,6 +60,8 @@ pub fn run<I, T, E>(args: I, exit: E, version: VersionInfo) -> error::Result<()>
 		ParseAndPrepare::ExportBlocks(cmd) => cmd.run_with_builder(|config: Config<_>|
 			Ok(new_full_start!(config).0), load_spec, exit),
 		ParseAndPrepare::ImportBlocks(cmd) => cmd.run_with_builder(|config: Config<_>|
+			Ok(new_full_start!(config).0), load_spec, exit),
+		ParseAndPrepare::CheckBlock(cmd) => cmd.run_with_builder(|config: Config<_>|
 			Ok(new_full_start!(config).0), load_spec, exit),
 		ParseAndPrepare::PurgeChain(cmd) => cmd.run(load_spec),
 		ParseAndPrepare::RevertChain(cmd) => cmd.run_with_builder(|config: Config<_>|
