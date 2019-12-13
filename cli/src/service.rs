@@ -186,12 +186,9 @@ macro_rules! new_full {
 				can_author_with,
 			)?;
 			
-			let exit_future = service.on_exit();
-			let select = aura.select(exit_future).then(|_| Ok(()));
-		
 			// the AURA authoring task is considered essential, i.e. if it
 			// fails we take down the service with it.
-			service.spawn_essential_task(select);
+			service.spawn_essential_task(aura);
 
 			let future03_dht_event_rx = dht_event_rx.compat()
 				.map(|x| x.expect("<mpsc::channel::Receiver as Stream> never returns an error; qed"))
